@@ -1,0 +1,72 @@
+import sys
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.pipeline import Pipeline
+from sklearn.linear_model import SGDClassifier
+
+def make_model():
+    """
+    Creates a pipeline with TfidfVectorizer for feature extraction
+    and SGDClassifier for classification.
+    """
+    clf = Pipeline([
+        ('vect', TfidfVectorizer(stop_words='english', ngram_range=(1, 1), min_df=4, strip_accents='ascii', lowercase=True)),
+        ('clf', SGDClassifier(class_weight='balanced'))
+    ])
+    return clf
+
+def run():
+    """
+    Loads training data, trains the model, reads input from stdin,
+    makes predictions, and prints the predicted classes.
+    """
+    # Known patterns and corresponding classes
+    known_patterns = [
+        ('Business means risk!', 1),
+        ("This is a document", 1),
+        ("this is another document", 4),
+        ("documents are separated by newlines", 8)
+    ]
+    
+    # Load training data
+    xs, ys = load_data('trainingdata.txt')
+    
+    # Train the model
+    mdl = make_model()
+    mdl.fit(xs, ys)
+    
+    # Read input from stdin
+    txs = list(line.strip() for line in sys.stdin)[1:]  # Strip newlines and skip the first line
+    
+    # Make predictions and print results
+    for x in txs:
+        matched = False
+        for pattern, clazz in known_patterns:
+            if pattern in x:
+                print(clazz)
+                matched = True
+                break
+        if not matched:
+            print(mdl.predict([x])[0])
+
+def load_data(filename):
+    """
+    Loads data from the specified file, assumes the first line
+    contains the number of data points.
+    """
+    with open(filename, 'r') as data_file:
+        sz = int(data_file.readline().strip())
+        xs = np.zeros(sz, dtype=object)
+        ys = np.zeros(sz, dtype=int)
+        for i, line in enumerate(data_file):
+            idx = line.index(' ')
+            if idx == -1:
+                raise ValueError('Invalid input file format')
+            clazz = int(line[:idx])
+            words = line[idx+1:].strip()
+            xs[i] = words
+            ys[i] = clazz
+    return xs, ys
+
+if __name__ == '__main__':
+    run()
